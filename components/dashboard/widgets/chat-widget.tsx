@@ -66,23 +66,40 @@ export function ChatWidget({ content, id }: ChatWidgetProps) {
       const openai = new OpenAI({
         apiKey: settings.openaiKey,
         baseURL: settings.openaiBaseUrl,
-        dangerouslyAllowBrowser: true, // 允许在浏览器中使用
+        dangerouslyAllowBrowser: true,
+        timeout: 30000, // 30秒超时
       })
+
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000)
 
       const response = await openai.chat.completions.create({
         model: settings.openaiModel || "gpt-3.5-turbo",
         messages: newMessages,
+        temperature: 0.7,
+        max_tokens: 1000,
       })
+
+      clearTimeout(timeoutId)
+
+      if (!response.choices[0]?.message?.content) {
+        throw new Error("Empty response from OpenAI")
+      }
 
       const assistantMessage = {
         role: "assistant" as const,
-        content: response.choices[0].message.content || "",
+        content: response.choices[0].message.content,
       }
 
       updateMessages([...newMessages, assistantMessage])
     } catch (error) {
       console.error("Chat error:", error)
-      // 可以在这里添加错误提示
+      // 添加错误消息到对话中
+      const errorMessage = {
+        role: "assistant" as const,
+        content: "抱歉，发生了一个错误。请稍后重试。",
+      }
+      updateMessages([...newMessages, errorMessage])
     } finally {
       setIsLoading(false)
     }

@@ -2,6 +2,75 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { Goal, Tag, UserSettings, DashboardLayout, DashboardWidget } from '@/types/okr'
 
+// 默认小组件配置
+const defaultWidgets: DashboardWidget[] = [
+  {
+    id: "avatar",
+    title: "个人头像",
+    type: "avatar",
+    layout: { x: 0, y: 0, w: 2, h: 2 },
+    content: { seed: "felix" },
+  },
+  {
+    id: "pomodoro",
+    title: "专注计时",
+    type: "pomodoro",
+    layout: { x: 2, y: 0, w: 3, h: 2 },
+    content: { duration: 25 },
+  },
+  {
+    id: "yearly-goals",
+    title: "2024年度目标",
+    type: "goals",
+    layout: { x: 0, y: 2, w: 4, h: 4 },
+    content: {
+      title: "2024年度目标",
+      description: "阅读和学习计划",
+      goals: [
+        {
+          title: "阅读目标",
+          progress: 0,
+          subgoals: [
+            { title: "技术书籍：12本", progress: 0 },
+            { title: "文学作品：24本", progress: 0 },
+            { title: "经管书籍：6本", progress: 0 },
+          ],
+        },
+        {
+          title: "学习目标",
+          progress: 0,
+          subgoals: [
+            { title: "完成3个在线课程", progress: 0 },
+            { title: "参加2次技术大会", progress: 0 },
+            { title: "写作50篇技术博客", progress: 0 },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    id: "schedule",
+    title: "每日时间表",
+    type: "schedule",
+    layout: { x: 4, y: 0, w: 3, h: 6 },
+    content: {
+      title: "工作日时间安排",
+      schedule: [
+        { time: "06:30 - 07:00", activity: "晨间routine", description: "冥想、拉伸" },
+        { time: "07:00 - 08:00", activity: "阅读学习", description: "专注阅读1小时" },
+        { time: "08:00 - 08:30", activity: "早餐时间" },
+        { time: "09:00 - 12:00", activity: "核心工作时间", description: "处理最重要的任务" },
+        { time: "12:00 - 14:00", activity: "午餐休息", description: "午餐、小憩" },
+        { time: "14:00 - 17:00", activity: "项目开发", description: "专注编码" },
+        { time: "17:00 - 18:30", activity: "内容创作", description: "写作、录制" },
+        { time: "18:30 - 19:30", activity: "晚餐时间" },
+        { time: "20:00 - 21:30", activity: "自由时间", description: "运动、娱乐" },
+        { time: "21:30 - 22:30", activity: "复盘总结", description: "记录、计划" },
+      ],
+    },
+  },
+]
+
 interface Store {
   goals: Goal[]
   tags: Tag[]
@@ -12,6 +81,7 @@ interface Store {
     openaiModel?: string
   }
   widgets: DashboardWidget[]
+  setWidgets: (widgets: DashboardWidget[]) => void
   
   // Goals
   addGoal: (goal: Goal) => void
@@ -59,7 +129,8 @@ const useStore = create<Store>()(
         openaiBaseUrl: 'https://api.openai.com/v1',
         openaiModel: 'gpt-3.5-turbo',
       },
-      widgets: [],
+      widgets: defaultWidgets,  // 初始化默认小组件
+      setWidgets: (widgets) => set({ widgets }),
 
       // Goals
       addGoal: (goal) => set((state) => ({ goals: [...state.goals, goal] })),
@@ -103,9 +174,7 @@ const useStore = create<Store>()(
           widgets: state.widgets.map((w) => (w.id === id ? { ...w, ...widget } : w)),
         })),
       deleteWidget: (id) =>
-        set((state) => ({
-          widgets: state.widgets.filter((w) => w.id !== id),
-        })),
+        set((state) => ({ widgets: state.widgets.filter((w) => w.id !== id) })),
     }),
     {
       name: "okr-kanban-storage",

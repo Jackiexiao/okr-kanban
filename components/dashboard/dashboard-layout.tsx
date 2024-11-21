@@ -8,17 +8,12 @@ import 'react-resizable/css/styles.css'
 import { DashboardWidget } from "@/types/okr"
 import { useStore } from "@/lib/store" // Fix store import
 import { Button } from "../ui/button"
-import { GripHorizontal, Plus } from "lucide-react"
+import { GripHorizontal, Plus, X } from "lucide-react"
 import { AddWidgetDialog } from "./add-widget-dialog"
-import { AvatarWidget } from "./widgets/avatar-widget"
-import { PomodoroWidget } from "./widgets/pomodoro-widget"
-import { GoalsWidget } from "./widgets/goals-widget"
-import { ScheduleWidget } from "./widgets/schedule-widget"
-import { ChatWidget } from "./widgets/chat-widget"
-import { SettingsDialog } from "../settings/settings-dialog"
-import { AIGoalDialog } from "../goals/ai-goal-dialog"
-import { ScrollArea } from "../ui/scroll-area"
 import { WidgetSettings } from "./widget-settings"
+import { WidgetContent } from "./widget-content"
+import { nanoid } from "nanoid"
+import { cn } from "@/lib/utils"
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
 
@@ -31,24 +26,21 @@ const defaultWidgets: DashboardWidget[] = [
     id: "avatar",
     title: "个人头像",
     type: "avatar",
-    position: { x: 0, y: 0 },
-    size: { w: 2, h: 2 },
+    layout: { x: 0, y: 0, w: 2, h: 2 },
     content: { seed: "felix" },
   },
   {
     id: "pomodoro",
     title: "专注计时",
     type: "pomodoro",
-    position: { x: 2, y: 0 },
-    size: { w: 3, h: 2 },
+    layout: { x: 2, y: 0, w: 3, h: 2 },
     content: { duration: 25 },
   },
   {
     id: "yearly-goals",
     title: "2024年度目标",
     type: "goals",
-    position: { x: 0, y: 2 },
-    size: { w: 4, h: 4 },
+    layout: { x: 0, y: 2, w: 4, h: 4 },
     content: {
       title: "2024年度目标",
       description: "阅读和学习计划",
@@ -78,8 +70,7 @@ const defaultWidgets: DashboardWidget[] = [
     id: "schedule",
     title: "每日时间表",
     type: "schedule",
-    position: { x: 4, y: 0 },
-    size: { w: 3, h: 6 },
+    layout: { x: 4, y: 0, w: 3, h: 6 },
     content: {
       title: "工作日时间安排",
       schedule: [
@@ -98,150 +89,112 @@ const defaultWidgets: DashboardWidget[] = [
   },
 ]
 
-const defaultLayouts = {
-  lg: [
-    { i: 'avatar', x: 0, y: 0, w: 2, h: 2 },  // 头像小部件
-    { i: 'pomodoro', x: 2, y: 0, w: 3, h: 2 }, // 番茄钟小部件
-    { i: 'yearly-goals', x: 0, y: 2, w: 4, h: 4 },   // 目标小部件
-    { i: 'schedule', x: 4, y: 0, w: 3, h: 6 }, // 日程小部件
-  ],
-};
-
 export function DashboardLayout() {
-  const { settings, updateLayout } = useStore()
-  const [mounted, setMounted] = useState(false)
-  const currentLayout = settings.layouts.find(l => l.id === settings.defaultLayout)
-  const widgets = currentLayout?.widgets || defaultWidgets
+  const [widgets, setWidgets] = useStore((state) => [
+    state.widgets || defaultWidgets,  // 如果没有保存的小组件，使用默认小组件
+    state.setWidgets,
+  ])
 
-  // Prevent SSR flickering
-  useEffect(() => {
-    setMounted(true)
-    // 如果没有小组件，添加默认小组件
-    if (currentLayout && (!currentLayout.widgets || currentLayout.widgets.length === 0)) {
-      updateLayout(currentLayout.id, { widgets: defaultWidgets })
-    }
-  }, [])
-
-  if (!mounted) return null
-
-  const handleLayoutChange = (layout: any) => {
-    if (!currentLayout) return
-
-    const updatedWidgets = widgets.map(widget => {
-      const layoutItem = layout.find((item: any) => item.i === widget.id)
-      if (!layoutItem) return widget
-
-      return {
-        ...widget,
-        position: { x: layoutItem.x, y: layoutItem.y },
-        size: { w: layoutItem.w, h: layoutItem.h },
-      }
-    })
-
-    updateLayout(currentLayout.id, { widgets: updatedWidgets })
-  }
-
-  function WidgetWrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <div className="h-full">
-        {children}
-      </div>
+  const handleUpdateWidget = (id: string, updates: Partial<DashboardWidget>) => {
+    setWidgets(
+      widgets.map((widget) =>
+        widget.id === id ? { ...widget, ...updates } : widget
+      )
     )
   }
 
-  function WidgetContainer({ widget }: { widget: DashboardWidget }) {
-    const content = widget.content || {}
-    const style = {
-      ...(content.bgColor ? { backgroundColor: content.bgColor } : {}),
+  const handleAddWidget = (type: string) => {
+    const newWidget: DashboardWidget = {
+      id: nanoid(),
+      type,
+      content: {},
+      layout: {
+        x: 0,
+        y: Infinity,
+        w: 3,
+        h: 3,
+      },
     }
+    setWidgets([...widgets, newWidget])
+  }
 
-    return (
-      <div className="relative group h-full rounded-lg shadow-lg" style={style}>
-        <div className="absolute inset-0 rounded-lg bg-card" /> {/* 背景层 */}
-        <div className="relative h-full p-4"> {/* 内容层 */}
-          {content.title && (
-            <div className="text-sm font-medium mb-2">
-              {content.title}
-            </div>
-          )}
-          <WidgetSettings id={widget.id} type={widget.type} content={content} />
-          {renderWidget(widget)}
-        </div>
-      </div>
+  const handleLayoutChange = (layout: any[]) => {
+    setWidgets(
+      widgets.map((widget) => {
+        const newLayout = layout.find((l) => l.i === widget.id)
+        if (newLayout) {
+          return {
+            ...widget,
+            layout: {
+              x: newLayout.x,
+              y: newLayout.y,
+              w: newLayout.w,
+              h: newLayout.h,
+            },
+          }
+        }
+        return widget
+      })
     )
   }
 
-  function renderWidget(widget: DashboardWidget) {
-    const content = widget.content || {}
-
-    switch (widget.type) {
-      case "avatar":
-        return (
-          <WidgetWrapper>
-            <AvatarWidget content={content} id={widget.id} />
-          </WidgetWrapper>
-        )
-      case "pomodoro":
-        return (
-          <WidgetWrapper>
-            <PomodoroWidget content={content} />
-          </WidgetWrapper>
-        )
-      case "goals":
-        return (
-          <WidgetWrapper>
-            <GoalsWidget content={content} />
-          </WidgetWrapper>
-        )
-      case "schedule":
-        return (
-          <WidgetWrapper>
-            <ScheduleWidget content={content} />
-          </WidgetWrapper>
-        )
-      case "chat":
-        return (
-          <WidgetWrapper>
-            <ChatWidget content={content} id={widget.id} />
-          </WidgetWrapper>
-        )
-      default:
-        return null
-    }
+  const handleRemoveWidget = (id: string) => {
+    setWidgets(widgets.filter((widget) => widget.id !== id))
   }
 
   return (
-    <div className="flex-1 p-4">
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center space-x-2">
-          <AddWidgetDialog>
-            <Button
-              size="icon"
-              className="h-12 w-12 rounded-full shadow-lg"
-            >
-              <Plus className="h-6 w-6" />
-            </Button>
-          </AddWidgetDialog>
-        </div>
-        <SettingsDialog />
+    <div className="container mx-auto p-4">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-bold">个人 OKR 仪表盘</h1>
+        <AddWidgetDialog onAddWidget={handleAddWidget}>
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            添加小组件
+          </Button>
+        </AddWidgetDialog>
       </div>
+
       <ResponsiveGridLayout
         className="layout"
-        layouts={defaultLayouts}
+        layouts={{ lg: widgets.map((w) => ({ ...w.layout, i: w.id })) }}
         breakpoints={breakpoints}
         cols={cols}
         rowHeight={100}
         margin={[16, 16]}
-        containerPadding={[0, 0]}
-        isDraggable={true}
-        isResizable={true}
-        draggableHandle=".widget-drag-handle"
-        onLayoutChange={handleLayoutChange}
+        onLayoutChange={(layout) => handleLayoutChange(layout)}
+        draggableHandle=".drag-handle"
       >
-        {widgets.map(widget => (
-          <div key={widget.id}>
-            <div className="widget-drag-handle absolute top-0 left-0 right-0 h-8 cursor-move" />
-            <WidgetContainer widget={widget} />
+        {widgets.map((widget) => (
+          <div
+            key={widget.id}
+            className={cn(
+              "group relative flex flex-col rounded-lg border shadow-sm overflow-hidden",
+              widget.content?.bgColor || "bg-card"
+            )}
+            data-grid={widget.layout}
+          >
+            <div className="absolute inset-0 -z-10" />
+            <div className="flex items-center justify-between px-4 py-2 border-b">
+              <div className="flex items-center gap-2">
+                <GripHorizontal className="h-4 w-4 text-muted-foreground drag-handle cursor-move" />
+                <span className="font-medium">{widget.title || "未命名"}</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => handleRemoveWidget(widget.id)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex-1 min-h-0 overflow-auto">
+              <div className="h-full p-4">
+                <WidgetSettings widget={widget} onUpdate={handleUpdateWidget}>
+                  <WidgetContent widget={widget} />
+                </WidgetSettings>
+              </div>
+            </div>
           </div>
         ))}
       </ResponsiveGridLayout>

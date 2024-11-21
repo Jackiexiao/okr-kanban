@@ -1,35 +1,38 @@
 "use client"
 
-import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Edit } from "lucide-react"
+import { useStore } from "@/lib/store"
+import { nanoid } from "nanoid"
 
 interface AvatarWidgetProps {
   content: {
     seed?: string
   }
+  id: string
 }
 
-export function AvatarWidget({ content }: AvatarWidgetProps) {
-  const seed = content.seed || "felix"
-  const avatarUrl = `https://api.dicebear.com/7.x/notionists/svg?seed=${seed}`
+export function AvatarWidget({ content, id }: AvatarWidgetProps) {
+  const updateWidget = useStore(state => state.updateWidget)
+
+  const generateRandomSeed = () => {
+    const newSeed = nanoid(10)
+    updateWidget(id, {
+      content: {
+        ...content,
+        seed: newSeed,
+      },
+    })
+  }
 
   return (
-    <div className="relative group">
-      <Image
-        src={avatarUrl}
+    <div className="flex flex-col items-center justify-center space-y-4">
+      <img
+        src={`https://api.dicebear.com/7.x/notionists/svg?seed=${content.seed || "default"}`}
         alt="Avatar"
-        width={200}
-        height={200}
-        className="rounded-xl"
+        className="w-32 h-32"
       />
-      <Button
-        size="icon"
-        variant="ghost"
-        className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-        onClick={() => window.open("https://www.dicebear.com/playground/", "_blank")}
-      >
-        <Edit className="h-4 w-4" />
+      <Button variant="outline" size="sm" onClick={generateRandomSeed}>
+        随机生成
       </Button>
     </div>
   )

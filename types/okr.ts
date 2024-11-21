@@ -25,10 +25,9 @@ export interface Goal {
   updatedAt: string;
 }
 
-export interface DashboardWidget {
-  id: string;
-  title: string;
-  type: "avatar" | "pomodoro" | "goals" | "schedule";
+export type WidgetType = "avatar" | "pomodoro" | "goals" | "schedule";
+
+export interface Layout {
   position: {
     x: number;
     y: number;
@@ -37,7 +36,22 @@ export interface DashboardWidget {
     w: number;
     h: number;
   };
-  content: any;
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface DashboardWidget {
+  id: string;
+  type: WidgetType;
+  title?: string;
+  content: {
+    messages?: ChatMessage[];
+    [key: string]: any;
+  };
+  layout?: Layout;
 }
 
 export interface DashboardLayout {

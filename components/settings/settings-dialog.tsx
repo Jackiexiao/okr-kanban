@@ -108,6 +108,14 @@ export function SettingsDialog() {
                     />
                   </div>
                 </div>
+                <p className="text-sm text-yellow-500">
+                  ⚠️ 注意：API Key 将存储在浏览器本地。虽然我们采取了安全措施，但在浏览器中使用 API Key 仍有一定风险，请确保：
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>不要在不信任的设备上输入 API Key</li>
+                    <li>定期更换 API Key</li>
+                    <li>给 API Key 设置使用限额</li>
+                  </ul>
+                </p>
                 <p className="text-sm text-muted-foreground">
                   在 OpenAI 官网获取 API Key
                 </p>

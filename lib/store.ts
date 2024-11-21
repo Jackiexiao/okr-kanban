@@ -1,15 +1,17 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import { Goal, Tag, UserSettings, DashboardLayout } from '@/types/okr'
+import { Goal, Tag, UserSettings, DashboardLayout, DashboardWidget } from '@/types/okr'
 
 interface Store {
   goals: Goal[]
   tags: Tag[]
+  layouts: DashboardLayout[]
   settings: UserSettings & {
     openaiKey?: string
     openaiBaseUrl?: string
     openaiModel?: string
   }
+  widgets: DashboardWidget[]
   
   // Goals
   addGoal: (goal: Goal) => void
@@ -27,9 +29,21 @@ interface Store {
     openaiBaseUrl?: string
     openaiModel?: string
   }>) => void
+  
+  // Layouts
   addLayout: (layout: DashboardLayout) => void
   updateLayout: (id: string, layout: Partial<DashboardLayout>) => void
   deleteLayout: (id: string) => void
+  
+  // Widgets
+  addWidget: (widget: DashboardWidget) => void
+  updateWidget: (id: string, widget: Partial<DashboardWidget>) => void
+  deleteWidget: (id: string) => void
+}
+
+interface ChatMessage {
+  role: "user" | "assistant"
+  content: string
 }
 
 const useStore = create<Store>()(
@@ -37,18 +51,15 @@ const useStore = create<Store>()(
     (set) => ({
       goals: [],
       tags: [],
+      layouts: [],
       settings: {
         defaultLayout: 'default',
         theme: 'system',
         openaiKey: undefined,
         openaiBaseUrl: 'https://api.openai.com/v1',
         openaiModel: 'gpt-3.5-turbo',
-        layouts: [{
-          id: 'default',
-          name: 'Default Layout',
-          widgets: []
-        }]
       },
+      widgets: [],
 
       // Goals
       addGoal: (goal) => set((state) => ({ goals: [...state.goals, goal] })),
@@ -73,28 +84,27 @@ const useStore = create<Store>()(
         set((state) => ({
           settings: { ...state.settings, ...newSettings },
         })),
-      addLayout: (layout) =>
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            layouts: [...state.settings.layouts, layout],
-          },
-        })),
+
+      // Layouts
+      addLayout: (layout) => set((state) => ({ layouts: [...state.layouts, layout] })),
       updateLayout: (id, layout) =>
         set((state) => ({
-          settings: {
-            ...state.settings,
-            layouts: state.settings.layouts.map((l) =>
-              l.id === id ? { ...l, ...layout } : l
-            ),
-          },
+          layouts: state.layouts.map((l) => (l.id === id ? { ...l, ...layout } : l)),
         })),
       deleteLayout: (id) =>
         set((state) => ({
-          settings: {
-            ...state.settings,
-            layouts: state.settings.layouts.filter((l) => l.id !== id),
-          },
+          layouts: state.layouts.filter((l) => l.id !== id),
+        })),
+
+      // Widgets
+      addWidget: (widget) => set((state) => ({ widgets: [...state.widgets, widget] })),
+      updateWidget: (id, widget) =>
+        set((state) => ({
+          widgets: state.widgets.map((w) => (w.id === id ? { ...w, ...widget } : w)),
+        })),
+      deleteWidget: (id) =>
+        set((state) => ({
+          widgets: state.widgets.filter((w) => w.id !== id),
         })),
     }),
     {
@@ -102,5 +112,7 @@ const useStore = create<Store>()(
     }
   )
 )
+
+export type WidgetType = "avatar" | "pomodoro" | "goals" | "schedule" | "chat"
 
 export { useStore }

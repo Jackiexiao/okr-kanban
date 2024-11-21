@@ -14,9 +14,11 @@ import { AvatarWidget } from "./widgets/avatar-widget"
 import { PomodoroWidget } from "./widgets/pomodoro-widget"
 import { GoalsWidget } from "./widgets/goals-widget"
 import { ScheduleWidget } from "./widgets/schedule-widget"
+import { ChatWidget } from "./widgets/chat-widget"
 import { SettingsDialog } from "../settings/settings-dialog"
 import { AIGoalDialog } from "../goals/ai-goal-dialog"
 import { ScrollArea } from "../ui/scroll-area"
+import { WidgetSettings } from "./widget-settings"
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
 
@@ -139,38 +141,68 @@ export function DashboardLayout() {
     updateLayout(currentLayout.id, { widgets: updatedWidgets })
   }
 
-  const renderWidget = (widget: DashboardWidget) => {
-    const WidgetWrapper = ({ children }: { children: React.ReactNode }) => (
-      <div className="h-full w-full bg-card rounded-lg shadow p-4 relative group">
-        <div className="widget-drag-handle absolute top-0 left-0 right-0 h-8 cursor-move bg-transparent" />
-        <div className="font-medium mb-2">{widget.title}</div>
+  function WidgetWrapper({ children }: { children: React.ReactNode }) {
+    return (
+      <div className="h-full">
         {children}
       </div>
     )
+  }
+
+  function WidgetContainer({ widget }: { widget: DashboardWidget }) {
+    const content = widget.content || {}
+    const style = {
+      ...(content.bgColor ? { backgroundColor: content.bgColor } : {}),
+    }
+
+    return (
+      <div className="relative group h-full rounded-lg shadow-lg" style={style}>
+        <div className="absolute inset-0 rounded-lg bg-card" /> {/* 背景层 */}
+        <div className="relative h-full p-4"> {/* 内容层 */}
+          {content.title && (
+            <div className="text-sm font-medium mb-2">
+              {content.title}
+            </div>
+          )}
+          <WidgetSettings id={widget.id} type={widget.type} content={content} />
+          {renderWidget(widget)}
+        </div>
+      </div>
+    )
+  }
+
+  function renderWidget(widget: DashboardWidget) {
+    const content = widget.content || {}
 
     switch (widget.type) {
       case "avatar":
         return (
           <WidgetWrapper>
-            <AvatarWidget content={widget.content} />
+            <AvatarWidget content={content} id={widget.id} />
           </WidgetWrapper>
         )
       case "pomodoro":
         return (
           <WidgetWrapper>
-            <PomodoroWidget content={widget.content} />
+            <PomodoroWidget content={content} />
           </WidgetWrapper>
         )
       case "goals":
         return (
           <WidgetWrapper>
-            <GoalsWidget content={widget.content} />
+            <GoalsWidget content={content} />
           </WidgetWrapper>
         )
       case "schedule":
         return (
           <WidgetWrapper>
-            <ScheduleWidget content={widget.content} />
+            <ScheduleWidget content={content} />
+          </WidgetWrapper>
+        )
+      case "chat":
+        return (
+          <WidgetWrapper>
+            <ChatWidget content={content} id={widget.id} />
           </WidgetWrapper>
         )
       default:
@@ -179,7 +211,7 @@ export function DashboardLayout() {
   }
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="flex-1 p-4">
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center space-x-2">
           <AddWidgetDialog>
@@ -200,25 +232,16 @@ export function DashboardLayout() {
         cols={cols}
         rowHeight={100}
         margin={[16, 16]}
-        isResizable={true}
+        containerPadding={[0, 0]}
         isDraggable={true}
-        useCSSTransforms={true}
+        isResizable={true}
         draggableHandle=".widget-drag-handle"
         onLayoutChange={handleLayoutChange}
       >
         {widgets.map(widget => (
-          <div key={widget.id} className="widget-container">
-            <div className="widget-drag-handle absolute top-0 left-0 right-0 h-8 cursor-move bg-transparent" />
-            {widget.type === "goals" ? (
-              <div className="h-full flex flex-col">
-                <AIGoalDialog />
-                <ScrollArea className="flex-1 mt-4">
-                  {renderWidget(widget)}
-                </ScrollArea>
-              </div>
-            ) : (
-              renderWidget(widget)
-            )}
+          <div key={widget.id}>
+            <div className="widget-drag-handle absolute top-0 left-0 right-0 h-8 cursor-move" />
+            <WidgetContainer widget={widget} />
           </div>
         ))}
       </ResponsiveGridLayout>

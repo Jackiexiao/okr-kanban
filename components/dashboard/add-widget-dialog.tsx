@@ -23,9 +23,10 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
+import { RadioGroup, RadioGroupItem, Label } from "@/components/ui/radio-group"
 import { cn } from "@/lib/utils"
 import { useStore } from "@/lib/store"
+import { MessageSquare } from "lucide-react"
 
 const widgetTypes = [
   {
@@ -53,10 +54,15 @@ const widgetTypes = [
     name: "网站列表",
     description: "收藏常用网站链接",
   },
+  {
+    id: "chat",
+    name: "AI 助手",
+    description: "智能聊天助手，帮助你更好地完成目标",
+    icon: MessageSquare,
+  },
 ]
 
 const widgetSchema = z.object({
-  title: z.string().min(1, "请输入名称"),
   type: z.string(),
 })
 
@@ -69,35 +75,13 @@ interface AddWidgetDialogProps {
 export function AddWidgetDialog({ children }: AddWidgetDialogProps) {
   const { settings, updateLayout } = useStore()
   const [open, setOpen] = useState(false)
-  const [selectedType, setSelectedType] = useState(widgetTypes[0].id)
 
   const form = useForm<WidgetFormValues>({
     resolver: zodResolver(widgetSchema),
     defaultValues: {
-      title: "",
-      type: widgetTypes[0].id,
+      type: "",
     },
   })
-
-  function onSubmit(values: WidgetFormValues) {
-    const currentLayout = settings.layouts.find(l => l.id === settings.defaultLayout)
-    if (!currentLayout) return
-
-    const newWidget = {
-      id: nanoid(),
-      title: values.title,
-      type: values.type,
-      position: { x: 0, y: 0 },
-      size: { w: 3, h: 2 },
-      content: getDefaultContent(values.type),
-    }
-
-    updateLayout(currentLayout.id, {
-      widgets: [...currentLayout.widgets, newWidget],
-    })
-    setOpen(false)
-    form.reset()
-  }
 
   function getDefaultContent(type: string) {
     switch (type) {
@@ -111,9 +95,47 @@ export function AddWidgetDialog({ children }: AddWidgetDialogProps) {
         return { date: "", title: "" }
       case "links":
         return { links: [] }
+      case "chat":
+        return { messages: [] }
       default:
         return {}
     }
+  }
+
+  function getDefaultSize(type: string) {
+    switch (type) {
+      case "chat":
+        return { w: 8, h: 12 }
+      case "goals":
+        return { w: 6, h: 8 }
+      case "schedule":
+        return { w: 6, h: 8 }
+      case "pomodoro":
+        return { w: 4, h: 4 }
+      case "avatar":
+        return { w: 3, h: 4 }
+      default:
+        return { w: 4, h: 4 }
+    }
+  }
+
+  function onSubmit(data: WidgetFormValues) {
+    const currentLayout = settings.layouts.find(l => l.id === settings.defaultLayout)
+    if (!currentLayout) return
+
+    const newWidget = {
+      id: nanoid(),
+      type: data.type as string,
+      position: { x: 0, y: 0 },
+      size: getDefaultSize(data.type),
+      content: getDefaultContent(data.type),
+    }
+
+    updateLayout(currentLayout.id, {
+      widgets: [...currentLayout.widgets, newWidget],
+    })
+    setOpen(false)
+    form.reset()
   }
 
   return (
@@ -125,7 +147,7 @@ export function AddWidgetDialog({ children }: AddWidgetDialogProps) {
         <DialogHeader>
           <DialogTitle>添加小组件</DialogTitle>
           <DialogDescription>
-            选择一个小组件类型并为其命名
+            选择一个小组件类型
           </DialogDescription>
         </DialogHeader>
 
@@ -133,48 +155,27 @@ export function AddWidgetDialog({ children }: AddWidgetDialogProps) {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
               control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>名称</FormLabel>
-                  <FormControl>
-                    <Input placeholder="输入小组件名称" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
               name="type"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>类型</FormLabel>
-                  <div className="grid grid-cols-2 gap-4 pt-1">
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
                     {widgetTypes.map((type) => (
-                      <Button
-                        key={type.id}
-                        type="button"
-                        variant="outline"
-                        className={cn(
-                          "h-auto flex flex-col items-start p-4 space-y-1",
-                          field.value === type.id && "border-primary"
-                        )}
-                        onClick={() => {
-                          field.onChange(type.id)
-                          setSelectedType(type.id)
-                        }}
-                      >
-                        <div className="font-medium">{type.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {type.description}
-                        </div>
-                      </Button>
+                      <div key={type.id} className="flex items-center space-x-2">
+                        <RadioGroupItem
+                          value={type.id}
+                          id={type.id}
+                          {...field}
+                        />
+                        <Label htmlFor={type.id} className="flex-1">
+                          <div className="font-medium">{type.name}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {type.description}
+                          </div>
+                        </Label>
+                      </div>
                     ))}
                   </div>
-                  <FormMessage />
-                </FormItem>
+                </div>
               )}
             />
 
